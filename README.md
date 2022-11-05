@@ -11,35 +11,74 @@
 * [Sergey Ukustov](https://github.com/ukstv), [Ceramic Network](https://ceramic.network/)
 * [Brooklyn Zelenka](https://github.com/expede), [Fission Codes](https://fission.codes)
 
-
 ## Language
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
+## Dependencies
+
+* [UCAN](https://github.com/ucan-wg/spec)
+* [CACAO](https://github.com/ChainAgnostic/CAIPs/blob/master/CAIPs/caip-74.md)
+* [UCAN Canonicalization](https://github.com/ucan-wg/canonicalization/)
+
 # 0 Abstract
 
-Per the [core UCAN spec](https://github.com/ucan-wg/spec), all implementations MUST support JWT encoding. This provides a common representation that all implementations can understand. JWT canonicalization allows for alternate encodings to convert to and from the standard JWT format, retain the JWT signature scheme, and so on. This enables broad compatibility.
+[CAIP-74 ("CACAO")](https://github.com/ChainAgnostic/CAIPs/blob/master/CAIPs/caip-74.md) is a token format designed as a machine-readable representation of a "Sign-in with X" (e.g. [EIP-4361 "Sign in with Ethereum"](https://eips.ethereum.org/EIPS/eip-4361)) payloads.
 
 # 1 Motivation
 
-The base UCAN spec is given as a JWT, which is a very open format aimed at broad adoption, and with mature tooling. JWT does not specify aspects like whitespace, key ordering, and capitalization. There is no technical reason that the information contained in a UCAN could not be expressed in a different format, such as [CWT](https://datatracker.ietf.org/doc/html/rfc8392) or [IPLD](https://ipld.io/). By forcing a rigid format, JWT canonicalization provides a deterministic way to convert to and from JWT and other formats, while staying fully compatible with JWT validators.
+Sign in with X is a method for providing human-readable authorization signing in wallets and other key management systems.
 
-# 2 Canonicalization
 
-To canonicalize a UCAN, the JSON segments MUST fulfill the following requirements:
+# 2 Convertion
 
-1. All `can` fields MUST be lowercase
-2. All unused optional fields (such as `fct`) that are empty MUST be omitted
-3. [`dag-json`](https://ipld.io/specs/codecs/dag-json/spec/) encoding MUST be used
-4. The resulting JWT MUST be [base64url](https://datatracker.ietf.org/doc/html/rfc4648#section-5) encoded per [RFC 7519]
-5. All segments MUST be joined with `.`s, per [RFC 7519](https://www.rfc-editor.org/rfc/rfc7519)
 
-UCAN canonicalization is signalled by CID. If no canonicalization is used, the CID MUST use the [raw multicodec](https://github.com/multiformats/multicodec/blob/master/table.csv#L39). Canonicalized UCANs that wish to signal this encoding MUST use [any other CID codec](https://github.com/multiformats/multicodec/blob/master/table.csv), including but not limited to `dag-json` and `dag-cbor`.
+| UCAN Field | CACAO Field | Comments                                                               | 
+|------------|-------------|------------------------------------------------------------------------|
+|            | `domain`    | The RFC 3986 authority that is requesting the signature                |
+| `iss`      | `iss`       | MUST be `did:pkh` in CACAO                                             |
+| `aud`      | `aud`       | MAY be any URI in CACAO, MUST be a DID in UCAN                         |
+|            | `version`   | CACAO version                                                          | 
+| `ucv`      |             | UCAN version                                                           |
+| `nonce`    | `nonce`     |                                                                        |
+|            | `iat`       |                                                                        |
+| `nbf`      | `nbf`       | Given as RFC 3339 date-time format in CACAO, as Unix timestamp in UCAN |
+| `exp`      | `exp`       | Given as RFC 3339 date-time format in CACAO, as Unix timestamp in UCAN |
+|            | `statement` | Optional in CACAO                                                      |
+|            | `requestId` |                                                                        |
+|            | `resources` | Resouces as URIs, ability scoping not defined in CACAO                 |
+| `att`      |             | Equivalent to CACAO `resources`, but MUST include ability scoping      |
 
-## 2.1 Non-Canonical Validator CID Handling
 
-Validators that have not implemented this specification MUST be provided JWT-encoded UCANs. These validators will be unable to validate the CID in the proofs field. This is not strictly a problem in a semi-trusted scenario, as UCAN only depends on the existence (not the specific CID) of a valid proof for the capabilities being claimed. The security risk is for a malicious peer to provide very long but ultimately invalid proof chains as a denial-of-service vector. This is the case for any validator that does not check the CID hash upon receipt.
+## 2.1 Ability Harmonization
+
+The CACAO `resource` field does not specify a fixed ability format.
+
+If no 
+
+FIXME add resource scoping upstream
+
+
+# 3 IPLD
+
 
 # 4 Acknowledgments
 
-Thanks to [Philipp Krüger](https://github.com/matheus23) for his feedback on canonicalization signalling.
+
+
+
+----------
+
+type Payload struct {
+  domain String // =domain
+  iss String // = DID pkh
+  aud String // =uri
+  version String
+  nonce String
+  iat String // RFC3339 date-time =issued-at
+  nbf optional String // RFC3339 date-time =not-before
+  exp optional String // RFC3339 date-time = expiration-time
+  statement optional String // =statement
+  requestId optional String // =request-id
+  resources optional [ String ] // =resources as URIs
+}
